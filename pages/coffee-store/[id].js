@@ -4,15 +4,19 @@ import Head from "next/head";
 import Image from "next/image";
 import styles from "../../styles/coffee-store.module.css";
 import { fetchCoffeeStores } from "../../lib/coffee-stores";
+import { useContext, useEffect, useState } from "react";
+import { StoreContext } from "../../store/store-context";
+import { isEmpty } from "../../utils";
 
 export async function getStaticProps({ params }) {
   const coffeeStores = await fetchCoffeeStores();
+  const findCoffeeStoreById = coffeeStores.find((coffeeStore) => {
+    return coffeeStore.id.toString() === params.id; // dynamic id
+  });
 
   return {
     props: {
-      coffeeStore: coffeeStores.find((coffeeStore) => {
-        return coffeeStore.id.toString() === params.id; // dynamic id
-      }),
+      coffeeStore: findCoffeeStoreById ? findCoffeeStoreById : {},
     },
   };
 }
@@ -33,14 +37,33 @@ export async function getStaticPaths() {
   };
 }
 
-const CoffeeStore = ({ coffeeStore }) => {
+const CoffeeStore = (initialProps) => {
   const router = useRouter();
 
   if (router.isFallback) {
     return <div>Loading</div>;
   }
 
-  const { location, name, imgUrl } = coffeeStore;
+  const id = router.query.id;
+
+  const [coffeeStore, setCoffeeStore] = useState(initialProps.coffeeStore);
+
+  const {
+    state: { coffeeStores },
+  } = useContext(StoreContext);
+
+  useEffect(() => {
+    if (isEmpty(initialProps.coffeeStore)) {
+      if (coffeeStores.length > 0) {
+        const findCoffeeStoreById = coffeeStores.find((coffeeStore) => {
+          return coffeeStore.id.toString() === id; // dynamic id
+        });
+        setCoffeeStore(findCoffeeStoreById);
+      }
+    }
+  }, [id]);
+
+  const { address, neighbourhood, name, imgUrl } = coffeeStore;
 
   const handleUpvoteButton = () => {
     console.log("handle upvote");
@@ -56,7 +79,7 @@ const CoffeeStore = ({ coffeeStore }) => {
         <div className={styles.col1}>
           <div className={styles.backToHomeLink}>
             <Link href="/">
-              <a>Back to home</a>
+              <a>← Back to home</a>
             </Link>
           </div>
 
@@ -79,13 +102,13 @@ const CoffeeStore = ({ coffeeStore }) => {
         <div className={`glass ${styles.col2}`}>
           <div className={styles.iconWrapper}>
             <Image src="/static/icons/places.svg" width="24" height="24" />
-            <p className={styles.text}>{location.address}</p>
+            <p className={styles.text}>{address}</p>
           </div>
 
-          {location.neighborhood && (
+          {neighbourhood && (
             <div className={styles.iconWrapper}>
               <Image src="/static/icons/nearMe.svg" width="24" height="24" />
-              <p className={styles.text}>{location.neighborhood}</p>
+              <p className={styles.text}>{neighbourhood}</p>
             </div>
           )}
 
